@@ -1,0 +1,85 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fswiss\fcharset0 Helvetica-Bold;\f2\froman\fcharset0 Times-Bold;
+\f3\froman\fcharset0 Times-Roman;\f4\froman\fcharset0 Times-Italic;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red109\green109\blue109;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c50196\c50196\c50196;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+\
+
+\f1\b When to use NLP and when NOT to use NLP
+\f0\b0 \
+\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f2\b \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 When NLP is genuinely useful for emails
+\f3\b0 \
+
+\f2\b 1. Categorizing emails when the rules get too complex to hardcode
+\f3\b0  Your current script works great because your categories are predictable \'97 "Cancelled" is always in the subject. But imagine if you needed to catch emails 
+\f4\i about
+\f3\i0  cancellations that never use the word "cancel" at all. NLP can understand that "service termination," "disconnect request," and "account closure" all mean roughly the same thing without you writing 50 regex patterns.\
+
+\f2\b 2. Sentiment analysis on customer-facing inboxes
+\f3\b0  Companies with high email volume (think utilities, telecoms) use NLP to flag emails where a customer is clearly frustrated or escalating before a human even reads it. Prioritizing "I've been without power for three days and nobody has called me back" above a routine inquiry is something keyword matching can't reliably do.\
+
+\f2\b 3. Extracting structured data from unstructured email bodies
+\f3\b0  At Oncor, imagine emails that say things like "Account #48823 at 4521 Maple St needs a reconnect by Friday." NLP can pull out the account number, address, and requested date automatically and push them into a database or ticket system \'97 no human data entry needed. This is called Named Entity Recognition (NER).\
+
+\f2\b 4. Detecting duplicate or near-duplicate alerts
+\f3\b0  In operations environments, you often get dozens of system-generated alerts that are essentially the same issue reported slightly differently. NLP can cluster those together so the on-call team sees "14 variations of the same communication delay alert" instead of 14 separate items to triage.\
+
+\f2\b 5. Auto-routing emails to the right team or queue
+\f3\b0  Large organizations use NLP to read an incoming email and decide whether it should go to billing, field ops, IT, or customer service \'97 without a human acting as a dispatcher. The model learns from historical routing decisions rather than hand-written rules.\
+
+\f2\b 6. Summarizing long email threads
+\f3\b0  This is becoming extremely common with LLM-powered tools. Instead of reading a 30-reply thread, NLP distills it to a 3-sentence summary: what the issue was, what was decided, and what action is pending. Huge time saver in operations.\
+
+\f2\b 7. Anomaly detection \'97 catching unusual email patterns
+\f3\b0  If your system normally gets 5 "Comm Delay" alerts a day and suddenly gets 47 in one hour, NLP combined with some basic statistics can flag that as an anomaly worth investigating, rather than just adding them to the same pile.\
+
+\f2\b 8. Language-agnostic categorization
+\f3\b0  If you're dealing with emails across multiple languages (common in multinational companies), NLP models handle translation and categorization in one step \'97 keyword rules would require you to maintain separate rule sets for every language.\
+\pard\pardeftab720\partightenfactor0
+\cf3 \strokec3 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f2\b \cf0 \strokec2 When NLP is overkill or a bad fit
+\f3\b0 \
+The honest answer is that for a lot of real-world email automation, simple pattern matching like what your script does is actually the 
+\f4\i right
+\f3\i0  tool. NLP adds complexity, cost, and maintenance burden. It's not the right fit when:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\f2\b \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your categories are well-defined and consistent.
+\f3\b0  If every cancellation email literally has "Cancelled" in the subject (like yours), regex is faster, cheaper, more transparent, and easier to debug. NLP would be solving a problem you don't have.\
+\ls1\ilvl0
+\f2\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your email volume is low.
+\f3\b0  NLP models have overhead \'97 setup, API costs or compute, monitoring. If you're processing 50 emails a day, it's not worth it.\
+\ls1\ilvl0
+\f2\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 You need explainability.
+\f3\b0  In regulated industries (and utilities can be one), you sometimes need to be able to explain exactly 
+\f4\i why
+\f3\i0  something was categorized a certain way. "It matched the word 'cancel'" is a much easier audit trail than "the model gave it a 0.87 confidence score."\
+\ls1\ilvl0
+\f2\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Your data is too domain-specific and you don't have training examples.
+\f3\b0  A general NLP model won't know what "DFNP Summary" or "Reconnect FA" means in your context. You'd need to train or fine-tune it, which requires a labeled dataset you probably don't have yet.\
+\pard\pardeftab720\partightenfactor0
+\cf3 \strokec3 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f2\b \cf0 \strokec2 The practical takeaway for your project
+\f3\b0 \
+Your current rule-based approach is the right starting point. The natural evolution would be: once you've collected enough categorized emails over several months, 
+\f4\i that data
+\f3\i0  becomes your training set if you ever want to move toward a smarter model. So the way you're building this now is actually setting you up well for an NLP version later if you need it.\
+}
