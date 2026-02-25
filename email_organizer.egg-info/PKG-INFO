@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: email-organizer
+Version: 0.1.0
+Summary: Automatically organize incoming emails into categorized folders
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+
+# email-organizer
+This will be an ongoing project to organize emails that constantly flow in and organize them

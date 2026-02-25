@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-organizer"
+version = "0.1.0"
+description = "Automatically organize incoming emails into categorized folders"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+email-organizer = "main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["email_organizer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
