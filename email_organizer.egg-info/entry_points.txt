@@ -1,2 +1,0 @@
-[console_scripts]
-email-organizer = main:main
