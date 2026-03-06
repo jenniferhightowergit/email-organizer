@@ -1,0 +1,15 @@
+import win32com.client
+
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+inbox = outlook.GetDefaultFolder(6)
+
+messages = inbox.Items
+messages.Sort("[ReceivedTime]", True)
+
+for message in messages[:20]:
+    try:
+        sender = message.Sender.GetExchangeUser().PrimarySmtpAddress
+    except:
+        sender = message.SenderEmailAddress
+
+    print(sender, "|", message.Subject)
