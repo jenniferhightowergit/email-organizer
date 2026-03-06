@@ -1,0 +1,87 @@
+import os
+import tempfile
+import pandas as pd
+import win32com.client
+
+sender_email = "coworker@company.com"
+
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+inbox = outlook.GetDefaultFolder(6)
+
+messages = inbox.Items
+messages.Sort("[ReceivedTime]", True)
+
+matching_emails = []
+
+for message in messages:
+    try:
+        try:
+            sender = message.Sender.GetExchangeUser().PrimarySmtpAddress
+        except:
+            sender = message.SenderEmailAddress
+
+        if sender and sender.lower() == sender_email.lower():
+            matching_emails.append(message)
+
+    except:
+        continue
+
+print("Matching emails:", len(matching_emails))
+
+all_dfs = []
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    for email in matching_emails:
+        print("\nEMAIL:", email.Subject)
+
+        for i in range(1, email.Attachments.Count + 1):
+            attachment = email.Attachments.Item(i)
+            filename = attachment.FileName
+
+            print("   Found attachment:", filename)
+
+            if not filename.lower().endswith(".xlsx"):
+                print("   Skipping - not xlsx")
+                continue
+
+            temp_path = os.path.join(temp_dir, filename)
+            attachment.SaveAsFile(temp_path)
+
+            df = pd.read_excel(temp_path, sheet_name="Sheet1", engine="openpyxl")
+
+            file_date = filename[-15:-5]
+            df["file_date"] = file_date
+
+            all_dfs.append(df)
+
+            print("   Rows loaded:", len(df))
+
+if all_dfs:
+    final_df = pd.concat(all_dfs, ignore_index=True)
+    print("\nFinal dataframe shape:", final_df.shape)
+else:
+    final_df = pd.DataFrame()
+    print("\nNo data loaded.")
+
+final_df.head()
+
+
+
+
+df["source_file"] = filename
+df["email_subject"] = email.Subject
+df["received_time"] = email.ReceivedTime
+
+
+
+
+
+df = pd.read_excel(temp_path, sheet_name="Sheet1", engine="openpyxl")
+
+file_date = filename[-15:-5]
+df["file_date"] = file_date
+df["source_file"] = filename
+df["email_subject"] = email.Subject
+df["received_time"] = email.ReceivedTime
+
+all_dfs.append(df)
