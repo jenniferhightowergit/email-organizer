@@ -1,0 +1,143 @@
+import os
+import re
+import tempfile
+import pandas as pd
+import win32com.client
+
+
+def extract_date_from_filename(filename: str):
+    """
+    Extracts dates like:
+    02_20_2026
+    02-20-2026
+    02/20/2026
+    Returns a string like 2-20-2026
+    """
+    match = re.search(r'(\d{2})[_\-/](\d{2})[_\-/](\d{4})', filename)
+    if match:
+        month, day, year = match.groups()
+        return f"{int(month)}-{int(day)}-{year}"
+    return None
+
+
+def get_smtp_address(message):
+    """
+    Try to get the true SMTP sender address from Outlook/Exchange.
+    Falls back to SenderEmailAddress if needed.
+    """
+    try:
+        sender = message.Sender
+        if sender is not None:
+            exchange_user = sender.GetExchangeUser()
+            if exchange_user is not None:
+                smtp = exchange_user.PrimarySmtpAddress
+                if smtp:
+                    return smtp.lower()
+    except Exception:
+        pass
+
+    try:
+        smtp = str(message.SenderEmailAddress).strip().lower()
+        if smtp:
+            return smtp
+    except Exception:
+        pass
+
+    return None
+
+
+def get_matching_emails(sender_email: str, subject_text: str = None, folder_id: int = 6):
+    """
+    folder_id = 6 means Inbox
+    Returns matching Outlook mail items filtered by sender SMTP email.
+    """
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    folder = outlook.GetDefaultFolder(folder_id)
+    messages = folder.Items
+    messages.Sort("[ReceivedTime]", True)
+
+    sender_email = sender_email.strip().lower()
+    matching = []
+
+    for message in messages:
+        try:
+            smtp_address = get_smtp_address(message)
+
+            if smtp_address != sender_email:
+                continue
+
+            if subject_text:
+                subject = str(getattr(message, "Subject", ""))
+                if subject_text.lower() not in subject.lower():
+                    continue
+
+            matching.append(message)
+
+        except Exception as e:
+            print(f"Skipping message due to error: {e}")
+
+    return matching
+
+
+def combine_excel_attachments_from_emails(emails, sheet_name="Sheet1"):
+    all_dfs = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for message in emails:
+            try:
+                attachments = message.Attachments
+
+                for i in range(1, attachments.Count + 1):
+                    attachment = attachments.Item(i)
+                    filename = attachment.FileName
+
+                    if not filename.lower().endswith((".xlsx", ".xls")):
+                        continue
+
+                    temp_path = os.path.join(temp_dir, filename)
+                    attachment.SaveAsFile(temp_path)
+
+                    # Use openpyxl for xlsx, let pandas infer engine for xls if needed
+                    if filename.lower().endswith(".xlsx"):
+                        df = pd.read_excel(temp_path, sheet_name=sheet_name, engine="openpyxl")
+                    else:
+                        df = pd.read_excel(temp_path, sheet_name=sheet_name)
+
+                    file_date = extract_date_from_filename(filename)
+
+                    df["file_date"] = file_date
+                    df["source_file"] = filename
+                    df["email_subject"] = message.Subject
+                    df["received_time"] = message.ReceivedTime
+                    df["sender_email"] = get_smtp_address(message)
+
+                    all_dfs.append(df)
+
+                    print(f"Loaded {filename}: {len(df)} rows")
+
+            except Exception as e:
+                print(f"Error processing email '{getattr(message, 'Subject', 'Unknown')}': {e}")
+
+    if all_dfs:
+        return pd.concat(all_dfs, ignore_index=True)
+    else:
+        return pd.DataFrame()
+
+
+# --------------------------
+# USAGE
+# --------------------------
+sender = "coworker@company.com"   # exact sender email
+subject_filter = "Daily Meter Report"  # optional, set to None to ignore subject
+
+emails = get_matching_emails(sender_email=sender, subject_text=subject_filter)
+
+print(f"Matching emails found: {len(emails)}")
+
+for email in emails:
+    print(email.ReceivedTime, "|", email.Subject, "|", get_smtp_address(email))
+
+final_df = combine_excel_attachments_from_emails(emails, sheet_name="Sheet1")
+
+print(final_df.head())
+print(f"Total rows: {len(final_df)}")
