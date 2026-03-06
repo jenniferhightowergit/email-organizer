@@ -1,0 +1,113 @@
+import os
+import re
+import tempfile
+import pandas as pd
+import win32com.client
+
+
+def extract_date_from_filename(filename: str):
+    """
+    Extracts dates like:
+    02_20_2026
+    02-20-2026
+    02/20/2026
+    Returns a string like 2-20-2026
+    """
+    match = re.search(r'(\d{2})[_\-/](\d{2})[_\-/](\d{4})', filename)
+    if match:
+        month, day, year = match.groups()
+        return f"{int(month)}-{int(day)}-{year}"
+    return None
+
+
+def get_matching_emails(sender_email: str, subject_text: str = None, folder_id: int = 6):
+    """
+    folder_id = 6 means Inbox
+    Returns matching Outlook mail items.
+    """
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    folder = outlook.GetDefaultFolder(folder_id)
+    messages = folder.Items
+    messages.Sort("[ReceivedTime]", True)
+
+    matching = []
+
+    for message in messages:
+        try:
+            sender_match = False
+            subject_match = False
+
+            # For internal Outlook mail, SenderEmailAddress may be Exchange format.
+            # This catches the visible sender name too.
+            sender_email_address = str(getattr(message, "SenderEmailAddress", "")).lower()
+            sender_name = str(getattr(message, "SenderName", "")).lower()
+
+            if sender_email.lower() in sender_email_address or sender_email.lower() in sender_name:
+                sender_match = True
+
+            if subject_text:
+                subject = str(getattr(message, "Subject", ""))
+                if subject_text.lower() in subject.lower():
+                    subject_match = True
+            else:
+                subject_match = True
+
+            if sender_match and subject_match:
+                matching.append(message)
+
+        except Exception as e:
+            print(f"Skipping message due to error: {e}")
+
+    return matching
+
+
+def combine_excel_attachments_from_emails(emails, sheet_name="Sheet1"):
+    all_dfs = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        for message in emails:
+            try:
+                attachments = message.Attachments
+
+                for i in range(1, attachments.Count + 1):
+                    attachment = attachments.Item(i)
+                    filename = attachment.FileName
+
+                    if filename.lower().endswith((".xlsx", ".xls")):
+                        temp_path = os.path.join(temp_dir, filename)
+                        attachment.SaveAsFile(temp_path)
+
+                        df = pd.read_excel(temp_path, sheet_name=sheet_name, engine="openpyxl")
+
+                        file_date = extract_date_from_filename(filename)
+
+                        df["file_date"] = file_date
+                        df["source_file"] = filename
+                        df["email_subject"] = message.Subject
+                        df["received_time"] = message.ReceivedTime
+
+                        all_dfs.append(df)
+
+            except Exception as e:
+                print(f"Error processing email '{getattr(message, 'Subject', 'Unknown')}': {e}")
+
+    if all_dfs:
+        return pd.concat(all_dfs, ignore_index=True)
+    else:
+        return pd.DataFrame()
+
+
+# --------------------------
+# USAGE
+# --------------------------
+sender = "coworker@company.com"      # change this
+subject_filter = "Daily Meter Report"  # optional, can set to None
+
+emails = get_matching_emails(sender_email=sender, subject_text=subject_filter)
+
+print(f"Matching emails found: {len(emails)}")
+
+final_df = combine_excel_attachments_from_emails(emails, sheet_name="Sheet1")
+
+print(final_df.head())
+print(f"Total rows: {len(final_df)}")
