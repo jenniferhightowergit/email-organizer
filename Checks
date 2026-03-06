@@ -1,0 +1,31 @@
+import win32com.client
+
+sender_email = "coworker@company.com"
+
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+inbox = outlook.GetDefaultFolder(6)
+
+messages = inbox.Items
+messages.Sort("[ReceivedTime]", True)
+
+matching_emails = []
+
+for message in messages:
+    try:
+        try:
+            sender = message.Sender.GetExchangeUser().PrimarySmtpAddress
+        except:
+            sender = message.SenderEmailAddress
+
+        if sender and sender.lower() == sender_email.lower():
+            matching_emails.append(message)
+
+    except:
+        continue
+
+print("Matching emails:", len(matching_emails))
+for email in matching_emails:
+    print(email.Subject)
+
+    for i in range(1, email.Attachments.Count + 1):
+        print("   ", email.Attachments.Item(i).FileName)
