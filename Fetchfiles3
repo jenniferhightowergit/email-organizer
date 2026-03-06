@@ -1,0 +1,104 @@
+import os
+import tempfile
+import pandas as pd
+import win32com.client
+
+
+def get_excel_from_sender_debug(sender_email):
+    print("=== START FUNCTION ===")
+    print("Target sender email:", sender_email)
+
+    print("Connecting to Outlook...")
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    print("Connected to Outlook.")
+
+    print("Getting Inbox folder...")
+    inbox = outlook.GetDefaultFolder(6)
+    print("Inbox acquired.")
+
+    print("Pulling messages...")
+    messages = inbox.Items
+    print("Messages object acquired.")
+
+    print("Sorting messages by ReceivedTime descending...")
+    messages.Sort("[ReceivedTime]", True)
+    print("Messages sorted.")
+
+    dfs = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        print("Temporary directory created:", temp_dir)
+
+        message_count = 0
+
+        for message in messages:
+            message_count += 1
+            print("\n-----------------------------")
+            print(f"Processing message #{message_count}")
+
+            try:
+                subject = str(getattr(message, "Subject", "NO SUBJECT"))
+                print("Subject:", subject)
+
+                try:
+                    sender_raw = message.SenderEmailAddress
+                    print("Raw SenderEmailAddress:", sender_raw)
+                except Exception as e:
+                    print("FAILED getting SenderEmailAddress:", e)
+                    sender_raw = None
+
+                sender = str(sender_raw).lower() if sender_raw is not None else ""
+                print("Normalized sender:", sender)
+
+                if sender_email.lower() not in sender:
+                    print("Sender does not match target email. Skipping.")
+                    continue
+
+                print("Sender matched target email.")
+                print("Getting attachments...")
+
+                attachments = message.Attachments
+                print("Attachment count:", attachments.Count)
+
+                for i in range(1, attachments.Count + 1):
+                    print(f"  Processing attachment #{i}")
+
+                    try:
+                        attachment = attachments.Item(i)
+                        filename = attachment.FileName
+                        print("  Filename:", filename)
+
+                        if not filename.lower().endswith(".xlsx"):
+                            print("  Not an .xlsx file. Skipping.")
+                            continue
+
+                        print("  Excel file found. Saving to temp folder...")
+                        path = os.path.join(temp_dir, filename)
+                        attachment.SaveAsFile(path)
+                        print("  Saved to:", path)
+
+                        print("  Reading Excel Sheet1...")
+                        df = pd.read_excel(path, sheet_name="Sheet1")
+                        print("  Excel loaded.")
+                        print("  DataFrame shape:", df.shape)
+
+                        dfs.append(df)
+                        print("  DataFrame appended. Total dfs so far:", len(dfs))
+
+                    except Exception as e:
+                        print("  FAILED while processing attachment:", e)
+
+            except Exception as e:
+                print("FAILED while processing message:", e)
+
+    print("\n=== LOOP COMPLETE ===")
+    print("Total matching DataFrames:", len(dfs))
+
+    if dfs:
+        print("Concatenating DataFrames...")
+        final_df = pd.concat(dfs, ignore_index=True)
+        print("Final shape:", final_df.shape)
+        return final_df
+
+    print("No DataFrames found. Returning empty DataFrame.")
+    return pd.DataFrame()
