@@ -1,0 +1,55 @@
+import os
+import tempfile
+import pandas as pd
+import win32com.client
+
+
+def get_excel_from_sender(sender_email):
+    
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    inbox = outlook.GetDefaultFolder(6)  # Inbox
+    
+    messages = inbox.Items
+    messages.Sort("[ReceivedTime]", True)
+
+    dfs = []
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+
+        for message in messages:
+
+            try:
+                sender = str(message.SenderEmailAddress).lower()
+
+                if sender_email.lower() not in sender:
+                    continue
+
+                print("Found email:", message.Subject)
+
+                attachments = message.Attachments
+
+                for i in range(1, attachments.Count + 1):
+
+                    attachment = attachments.Item(i)
+                    filename = attachment.FileName
+
+                    if filename.lower().endswith(".xlsx"):
+
+                        print("   Loading:", filename)
+
+                        path = os.path.join(temp_dir, filename)
+                        attachment.SaveAsFile(path)
+
+                        df = pd.read_excel(path, sheet_name="Sheet1")
+
+                        print("   Rows:", len(df))
+
+                        dfs.append(df)
+
+            except Exception as e:
+                print("Skipped message:", e)
+
+    if dfs:
+        return pd.concat(dfs, ignore_index=True)
+
+    return pd.DataFrame()
