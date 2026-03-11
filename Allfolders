@@ -1,0 +1,49 @@
+def get_all_messages(folder):
+    messages = []
+
+    # messages in this folder
+    items = folder.Items
+    items.Sort("[ReceivedTime]", True)
+
+    for message in items:
+        messages.append(message)
+
+    # recurse into subfolders
+    for subfolder in folder.Folders:
+        messages.extend(get_all_messages(subfolder))
+
+    return messages
+
+
+messages = get_all_messages(inbox)
+
+
+Example integrated with your code
+
+
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+inbox = outlook.GetDefaultFolder(6)
+
+def get_all_messages(folder):
+    messages = []
+
+    items = folder.Items
+    items.Sort("[ReceivedTime]", True)
+
+    for message in items:
+        messages.append(message)
+
+    for subfolder in folder.Folders:
+        messages.extend(get_all_messages(subfolder))
+
+    return messages
+
+
+messages = get_all_messages(inbox)
+
+print("Total messages scanned:", len(messages))
+
+
+
+print("Folder:", message.Parent.Name)
+
