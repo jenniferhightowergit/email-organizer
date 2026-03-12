@@ -1,0 +1,141 @@
+First, add these columns to every loaded file
+
+df["source_file"] = filename
+df["received_time"] = str(email.ReceivedTime)
+df["email_subject"] = email.Subject
+
+
+
+
+
+if not existing_df.empty and {"source_file", "received_time"}.issubset(existing_df.columns):
+    processed_keys = set(
+        zip(
+            existing_df["source_file"].astype(str),
+            existing_df["received_time"].astype(str)
+        )
+    )
+else:
+    processed_keys = set()
+
+
+
+received_time_str = str(email.ReceivedTime)
+file_key = (filename, received_time_str)
+
+if file_key in processed_keys:
+    print(f"   Already processed, skipping: {filename}")
+    continue
+
+
+df["source_file"] = filename
+df["received_time"] = received_time_str
+df["email_subject"] = email.Subject
+df["file_date"] = file_date
+
+
+if new_dfs:
+    new_data = pd.concat(new_dfs, ignore_index=True)
+
+    if not existing_df.empty:
+        final_df = pd.concat([existing_df, new_data], ignore_index=True)
+    else:
+        final_df = new_data.copy()
+
+    final_df.to_csv(csv_path, index=False)
+else:
+    final_df = existing_df.copy()
+    print("No new files found.")
+
+
+basic example
+
+import os
+import tempfile
+import pandas as pd
+import win32com.client
+
+csv_path = r"C:\path\to\your\tableau_feed.csv"
+sender_email = "coworker@company.com"
+
+# load existing csv
+if os.path.exists(csv_path):
+    existing_df = pd.read_csv(csv_path)
+else:
+    existing_df = pd.DataFrame()
+
+# processed file keys
+if not existing_df.empty and {"source_file", "received_time"}.issubset(existing_df.columns):
+    processed_keys = set(
+        zip(
+            existing_df["source_file"].astype(str),
+            existing_df["received_time"].astype(str)
+        )
+    )
+else:
+    processed_keys = set()
+
+outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+inbox = outlook.GetDefaultFolder(6)
+messages = inbox.Items
+messages.Sort("[ReceivedTime]", True)
+
+new_dfs = []
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    for message in messages:
+        try:
+            try:
+                sender = message.Sender.GetExchangeUser().PrimarySmtpAddress
+            except:
+                sender = message.SenderEmailAddress
+
+            if not sender or sender.lower() != sender_email.lower():
+                continue
+
+            for i in range(1, message.Attachments.Count + 1):
+                attachment = message.Attachments.Item(i)
+                filename = attachment.FileName
+
+                if not filename.lower().endswith(".xlsx"):
+                    continue
+
+                received_time_str = str(message.ReceivedTime)
+                file_key = (filename, received_time_str)
+
+                if file_key in processed_keys:
+                    print(f"Already processed: {filename}")
+                    continue
+
+                temp_path = os.path.join(temp_dir, filename)
+                attachment.SaveAsFile(temp_path)
+
+                # put your sheet logic here
+                df = pd.read_excel(temp_path, sheet_name="Sheet1", engine="openpyxl")
+
+                file_date = filename[-15:-5]
+
+                df["file_date"] = file_date
+                df["source_file"] = filename
+                df["received_time"] = received_time_str
+                df["email_subject"] = message.Subject
+
+                new_dfs.append(df)
+                print(f"New file loaded: {filename}")
+
+        except Exception as e:
+            print("Skipped message due to error:", e)
+
+if new_dfs:
+    new_data = pd.concat(new_dfs, ignore_index=True)
+
+    if not existing_df.empty:
+        final_df = pd.concat([existing_df, new_data], ignore_index=True)
+    else:
+        final_df = new_data.copy()
+
+    final_df.to_csv(csv_path, index=False)
+    print(f"Appended {len(new_data)} new rows.")
+else:
+    final_df = existing_df.copy()
+    print("No new files found.")
