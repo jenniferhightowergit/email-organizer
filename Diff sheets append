@@ -5,7 +5,7 @@ import win32com.client
 
 sender_email = "coworker@company.com"
 
-outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+outlook = win32comy.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
 inbox = outlook.GetDefaultFolder(6)
 
 messages = inbox.Items
