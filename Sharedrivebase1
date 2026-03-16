@@ -1,0 +1,102 @@
+import os
+import glob
+import pandas as pd
+
+path = r"\\your_shared_drive\your_folder\*.xlsx"
+files = glob.glob(path)
+
+print("Matching files:", len(files))
+
+sheet1_dfs = []
+data_dfs = []
+
+for file_path in files:
+    filename = os.path.basename(file_path)
+
+    print("\nFILE:", filename)
+
+    if not filename.lower().endswith(".xlsx"):
+        print("   Skipping - not xlsx")
+        continue
+
+    file_date = filename[-15:-5]
+
+    # First try Sheet1
+    try:
+        df = pd.read_excel(file_path, sheet_name="Sheet1", engine="openpyxl")
+        df.columns = df.columns.str.strip()
+
+        columns_needed = ["column1", "column2"]
+        missing_cols = [c for c in columns_needed if c not in df.columns]
+
+        if missing_cols:
+            print(f"   Sheet1 missing columns {missing_cols}, skipping file.")
+        else:
+            df = df[columns_needed]
+            df["file_date"] = file_date
+            df["source_file"] = filename
+            df["file_path"] = file_path
+
+            # optional: filesystem modified timestamp
+            df["file_modified_time"] = pd.to_datetime(os.path.getmtime(file_path), unit="s")
+
+            sheet1_dfs.append(df)
+            print(f"   Loaded from Sheet1: {len(df)} rows")
+            continue
+
+    except ValueError:
+        print("   Sheet1 not found.")
+    except Exception as e:
+        print(f"   Error reading Sheet1: {e}")
+
+    # Then try DATA
+    try:
+        df = pd.read_excel(file_path, sheet_name="DATA", engine="openpyxl")
+        df.columns = df.columns.str.strip()
+
+        columns_needed = ["column1", "column2"]
+        missing_cols = [c for c in columns_needed if c not in df.columns]
+
+        if missing_cols:
+            print(f"   DATA missing columns {missing_cols}, skipping file.")
+        else:
+            df = df[columns_needed]
+            df["file_date"] = file_date
+            df["source_file"] = filename
+            df["file_path"] = file_path
+
+            # optional: filesystem modified timestamp
+            df["file_modified_time"] = pd.to_datetime(os.path.getmtime(file_path), unit="s")
+
+            data_dfs.append(df)
+            print(f"   Loaded from DATA: {len(df)} rows")
+
+    except ValueError:
+        print("   DATA not found either, skipping file.")
+    except Exception as e:
+        print(f"   Error reading DATA: {e}")
+
+if sheet1_dfs:
+    sheet1_final = pd.concat(sheet1_dfs, ignore_index=True)
+else:
+    sheet1_final = pd.DataFrame()
+
+if data_dfs:
+    data_final = pd.concat(data_dfs, ignore_index=True)
+else:
+    data_final = pd.DataFrame()
+
+if not sheet1_final.empty and not data_final.empty:
+    final_df = pd.concat([sheet1_final, data_final], ignore_index=True)
+elif not sheet1_final.empty:
+    final_df = sheet1_final
+elif not data_final.empty:
+    final_df = data_final
+else:
+    final_df = pd.DataFrame()
+
+print("\nSheet1 shape:", sheet1_final.shape)
+print("DATA shape:", data_final.shape)
+print("Final shape:", final_df.shape)
+
+final_df.head()
