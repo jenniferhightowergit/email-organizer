@@ -1,0 +1,22 @@
+import os
+import pandas as pd
+from datetime import datetime
+
+folder_path = r'C:\your\archive\folder'
+
+start_date = pd.to_datetime('2026-01-01')
+end_date = pd.to_datetime('today').normalize()
+
+matching_files = []
+
+for file_name in os.listdir(folder_path):
+    file_path = os.path.join(folder_path, file_name)
+
+    if os.path.isfile(file_path):
+        modified_time = pd.to_datetime(os.path.getmtime(file_path), unit='s').normalize()
+
+        if start_date <= modified_time <= end_date:
+            matching_files.append(file_path)
+
+print("Files in range:", len(matching_files))
+print(matching_files)
