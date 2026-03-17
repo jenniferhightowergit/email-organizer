@@ -1,0 +1,32 @@
+# -----------------------------
+# STEP 2: UPDATE MASTER CSV USING final_df
+# -----------------------------
+
+master_csv_path = r"\\yourpersonalshare\yourfolder\master_dataset.csv"
+
+# Load existing master
+if os.path.exists(master_csv_path):
+    master_df = pd.read_csv(master_csv_path)
+    
+    if not master_df.empty:
+        master_df["file_date"] = pd.to_datetime(master_df["file_date"], errors="coerce").dt.normalize()
+        master_df["source_file_modified_dt"] = pd.to_datetime(master_df["source_file_modified_dt"], errors="coerce")
+else:
+    master_df = pd.DataFrame()
+
+print("master_df rows before update:", len(master_df))
+
+# Replace old file_date data with new file_date data
+if not final_df.empty:
+    file_dates_to_replace = final_df["file_date"].dropna().unique()
+
+    if not master_df.empty:
+        master_df = master_df[~master_df["file_date"].isin(file_dates_to_replace)]
+
+    master_df = pd.concat([master_df, final_df], ignore_index=True)
+
+# Save updated master
+master_df.to_csv(master_csv_path, index=False)
+
+print("master_df rows after update:", len(master_df))
+print("master_df unique file dates:", master_df["file_date"].nunique() if not master_df.empty else 0)
