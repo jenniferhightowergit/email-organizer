@@ -1,24 +1,55 @@
+chstgpt
+
+import glob
 import os
 import pandas as pd
+
+path = r"\\yourshare\yourfolder\*.xlsx"
+
+start_date = pd.Timestamp("2026-01-01").normalize()
+end_date = pd.Timestamp.today().normalize()
+
+files = glob.glob(path)
+
+files = [
+    f for f in files
+    if not os.path.basename(f).startswith("~$")
+]
+
+files = [
+    f for f in files
+    if start_date <= pd.to_datetime(os.path.getmtime(f), unit="s").normalize() <= end_date
+]
+
+print(files)
+print(len(files))
+
+claude
+
+import glob
+import os
 from datetime import datetime
 
-folder_path = r'C:\your\archive\folder'
+# Config
+path = r"mypath\*.xlsx"  # Update this to your actual path with wildcard
+start_date = datetime(2026, 1, 1)
+end_date = datetime.today()
 
-start_date = pd.to_datetime('2026-01-01')
-end_date = pd.to_datetime('today').normalize()
+# Get all xlsx files, exclude temp files starting with ~$
+files = glob.glob(path)
+files = [f for f in files if not os.path.basename(f).startswith("~$")]
 
-matching_files = []
+# Apply date filter based on file modified date
+files = [
+    f for f in files
+    if start_date <= datetime.fromtimestamp(os.path.getmtime(f)) <= end_date
+]
 
-for file_name in os.listdir(folder_path):
-    file_path = os.path.join(folder_path, file_name)
+# Results
+print(f"Found {len(files)} file(s) modified between {start_date.date()} and {end_date.date()}:\n")
+for f in files:
+    mod_time = datetime.fromtimestamp(os.path.getmtime(f))
+    print(f"  {os.path.basename(f)}  —  Modified: {mod_time.strftime('%Y-%m-%d %H:%M')}")
 
-    if os.path.isfile(file_path):
-        modified_time = pd.to_datetime(os.path.getmtime(file_path), unit='s').normalize()
-
-        if start_date <= modified_time <= end_date:
-            matching_files.append(file_path)
-
-print("Files in range:", len(matching_files))
-print(matching_files)
 
 
