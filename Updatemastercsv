@@ -1,0 +1,59 @@
+import pandas as pd
+
+# --- paths ---
+master_path = r'\\your_shared_drive\folder\master.csv'
+
+# --- load files ---
+master_df = pd.read_csv(master_path)
+new_df = your_python_dataframe.copy()
+
+# --- convert date columns ---
+master_df['file_date'] = pd.to_datetime(master_df['file_date']).dt.date
+new_df['file_date'] = pd.to_datetime(new_df['file_date']).dt.date
+
+master_df['update_date'] = pd.to_datetime(master_df['update_date'])
+new_df['update_date'] = pd.to_datetime(new_df['update_date'])
+
+# --- get latest update_date per file_date in each dataset ---
+master_max = (
+    master_df.groupby('file_date', as_index=False)['update_date']
+    .max()
+    .rename(columns={'update_date': 'master_update_date'})
+)
+
+new_max = (
+    new_df.groupby('file_date', as_index=False)['update_date']
+    .max()
+    .rename(columns={'update_date': 'new_update_date'})
+)
+
+# --- compare master vs new on file_date ---
+compare_df = new_max.merge(master_max, on='file_date', how='left')
+
+# replace if:
+# 1. file_date exists in master and new_update_date > master_update_date
+# 2. OR file_date does not exist in master yet
+replace_dates = compare_df.loc[
+    compare_df['master_update_date'].isna() |
+    (compare_df['new_update_date'] > compare_df['master_update_date']),
+    'file_date'
+]
+
+replace_dates = set(replace_dates)
+
+# --- remove old rows from master for those dates ---
+master_filtered = master_df[~master_df['file_date'].isin(replace_dates)]
+
+# --- keep only new rows for those dates ---
+new_filtered = new_df[new_df['file_date'].isin(replace_dates)]
+
+# --- combine ---
+final_df = pd.concat([master_filtered, new_filtered], ignore_index=True)
+
+# --- optional: sort ---
+final_df = final_df.sort_values(['file_date', 'update_date']).reset_index(drop=True)
+
+# --- save back to CSV ---
+final_df.to_csv(master_path, index=False)
+
+print(f"Replaced/appended data for {len(replace_dates)} file_date(s).")
