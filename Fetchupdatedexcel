@@ -1,0 +1,39 @@
+from pathlib import Path
+import pandas as pd
+
+
+def get_latest_excel_file(folder_path: str, pattern: str = "*.xlsx") -> Path:
+    folder = Path(folder_path)
+    files = list(folder.glob(pattern))
+    
+    if not files:
+        raise FileNotFoundError(f"No files matching {pattern} found in {folder_path}")
+    
+    return max(files, key=lambda f: f.stat().st_mtime)
+
+
+def load_location_ids_from_excel(file_path: Path, sheet_name: str, location_col: str) -> pd.DataFrame:
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    
+    if location_col not in df.columns:
+        raise KeyError(f"Column '{location_col}' not found in sheet '{sheet_name}'")
+    
+    df = df[[location_col]].copy()
+    df[location_col] = df[location_col].astype(str).str.strip()
+    df = df.drop_duplicates()
+    
+    return df
+
+
+def attach_excel_match_flag(df_main: pd.DataFrame, df_lookup: pd.DataFrame, location_col: str) -> pd.DataFrame:
+    df_main = df_main.copy()
+    df_main[location_col] = df_main[location_col].astype(str).str.strip()
+    
+    df_result = df_main.merge(
+        df_lookup.assign(in_excel_file=1),
+        on=location_col,
+        how="left"
+    )
+    
+    df_result["in_excel_file"] = df_result["in_excel_file"].fillna(0).astype(int)
+    return df_result
