@@ -61,3 +61,85 @@ print("Matched rows:", (df_joined["in_excel_file"] == 1).sum())
 print("Unmatched rows:", (df_joined["in_excel_file"] == 0).sum())
 
 
+from pathlib import Path
+import pandas as pd
+
+
+def get_latest_excel_file(folder_path: str, pattern: str = "*.xlsx") -> Path:
+    folder = Path(folder_path)
+    files = list(folder.glob(pattern))
+    
+    if not files:
+        raise FileNotFoundError(f"No files matching {pattern} found in {folder_path}")
+    
+    return max(files, key=lambda f: f.stat().st_mtime)
+
+
+def load_keys_from_excel(
+    file_path: Path,
+    sheet_name: str,
+    location_col: str,
+    meter_col: str
+) -> pd.DataFrame:
+    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    
+    missing_cols = [col for col in [location_col, meter_col] if col not in df.columns]
+    if missing_cols:
+        raise KeyError(f"Missing columns in sheet '{sheet_name}': {missing_cols}")
+    
+    df = df[[location_col, meter_col]].copy()
+    
+    df[location_col] = df[location_col].astype(str).str.strip()
+    df[meter_col] = df[meter_col].astype(str).str.strip()
+    
+    df = df.drop_duplicates()
+    
+    return df
+
+
+def attach_excel_match_flag(
+    df_main: pd.DataFrame,
+    df_lookup: pd.DataFrame,
+    location_col: str,
+    meter_col: str
+) -> pd.DataFrame:
+    df_main = df_main.copy()
+    
+    df_main[location_col] = df_main[location_col].astype(str).str.strip()
+    df_main[meter_col] = df_main[meter_col].astype(str).str.strip()
+    
+    df_result = df_main.merge(
+        df_lookup.assign(in_excel_file=1),
+        on=[location_col, meter_col],
+        how="left"
+    )
+    
+    df_result["in_excel_file"] = df_result["in_excel_file"].fillna(0).astype(int)
+    
+    return df_result
+
+folder_path = r"\\your_shared_drive\your_folder"
+sheet_name = "Sheet1"
+location_col = "location_id"
+meter_col = "meter_number"
+
+latest_file = get_latest_excel_file(folder_path)
+print("Using latest file:", latest_file)
+
+df_lookup = load_keys_from_excel(
+    file_path=latest_file,
+    sheet_name=sheet_name,
+    location_col=location_col,
+    meter_col=meter_col
+)
+
+df_joined = attach_excel_match_flag(
+    df_main=df_main,
+    df_lookup=df_lookup,
+    location_col=location_col,
+    meter_col=meter_col
+)
+
+print(df_joined["in_excel_file"].value_counts())
+
+
