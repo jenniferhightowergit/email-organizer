@@ -1,8 +1,8 @@
-def attach_excel_match_flag(
+def attach_excel_match_flags(
     df_main: pd.DataFrame,
     df_lookup: pd.DataFrame,
-    location_col: str,
-    meter_col: str,
+    main_location_col: str,
+    main_meter_col: str,
     lookup_location_col: str = None,
     lookup_meter_col: str = None
 ) -> pd.DataFrame:
@@ -10,38 +10,38 @@ def attach_excel_match_flag(
     df_main = df_main.copy()
     df_lookup = df_lookup.copy()
     
-    # Default to same column names if not provided
-    lookup_location_col = lookup_location_col or location_col
-    lookup_meter_col = lookup_meter_col or meter_col
-    
-    # Clean columns
-    df_main[location_col] = df_main[location_col].astype(str).str.strip()
-    df_main[meter_col] = df_main[meter_col].astype(str).str.strip()
-    
+    lookup_location_col = lookup_location_col or main_location_col
+    lookup_meter_col = lookup_meter_col or main_meter_col
+
+    # Clean main df
+    df_main[main_location_col] = df_main[main_location_col].astype(str).str.strip()
+    df_main[main_meter_col] = df_main[main_meter_col].astype(str).str.strip()
+
+    # Clean lookup df
     df_lookup[lookup_location_col] = df_lookup[lookup_location_col].astype(str).str.strip()
     df_lookup[lookup_meter_col] = df_lookup[lookup_meter_col].astype(str).str.strip()
-    
-    df_result = df_main.merge(
-        df_lookup.assign(in_excel_file=1),
-        how="left",
-        left_on=[location_col, meter_col],
-        right_on=[lookup_location_col, lookup_meter_col]
+
+    # Separate match flags
+    df_main["location_match_flag"] = (
+        df_main[main_location_col]
+        .isin(df_lookup[lookup_location_col].dropna().unique())
+        .astype(int)
     )
-    
-    df_result["in_excel_file"] = df_result["in_excel_file"].fillna(0).astype(int)
-    
-    return df_result
+
+    df_main["meter_match_flag"] = (
+        df_main[main_meter_col]
+        .isin(df_lookup[lookup_meter_col].dropna().unique())
+        .astype(int)
+    )
+
+    return df_main
 
 
-df_joined = attach_excel_match_flag(
+df_joined = attach_excel_match_flags(
     df_main=df_main,
     df_lookup=df_lookup,
-    location_col="location_id",
-    meter_col="meter_number",
+    main_location_col="location_id",
+    main_meter_col="meter_number",
     lookup_location_col="Location ID",
     lookup_meter_col="Meter Num"
 )
-
-
-
-
