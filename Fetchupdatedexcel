@@ -37,3 +37,27 @@ def attach_excel_match_flag(df_main: pd.DataFrame, df_lookup: pd.DataFrame, loca
     
     df_result["in_excel_file"] = df_result["in_excel_file"].fillna(0).astype(int)
     return df_result
+o
+folder_path = r"\\your_shared_drive\your_folder"
+sheet_name = "Sheet1"
+location_col = "location_id"
+
+latest_file = get_latest_excel_file(folder_path)
+print("Using latest file:", latest_file)
+
+df_locations = load_location_ids_from_excel(latest_file, sheet_name, location_col)
+df_joined = attach_excel_match_flag(df_main, df_locations, location_col)
+
+print(df_joined["in_excel_file"].value_counts())
+
+df_locations["location_id"] = df_locations["location_id"].astype(str).str.strip().str.zfill(8)
+df_main["location_id"] = df_main["location_id"].astype(str).str.strip().str.zfill(8)
+
+print("Latest file used:", latest_file.name)
+print("Count of Excel location IDs:", len(df_locations))
+print("Distinct Excel location IDs:", df_locations["location_id"].nunique())
+print("Distinct main dataframe location IDs:", df_main["location_id"].nunique())
+print("Matched rows:", (df_joined["in_excel_file"] == 1).sum())
+print("Unmatched rows:", (df_joined["in_excel_file"] == 0).sum())
+
+
